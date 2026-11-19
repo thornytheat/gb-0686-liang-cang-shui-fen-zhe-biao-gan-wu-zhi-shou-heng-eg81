@@ -12,7 +12,7 @@ docker compose exec -T app pytest -q
 docker compose config --quiet
 ```
 
-浏览器访问 http://localhost:18200 。首页已装载脏样例，可编辑CSV与参数后运行，也可上传文件。七个导航分别对应业务步骤。
+浏览器访问 http://localhost:18200 。首页已装载脏样例，可编辑CSV与参数后运行，也可上传文件。八个导航分别对应业务步骤。
 
 ## 模块
 
@@ -23,6 +23,7 @@ docker compose config --quiet
 - M5 仓批平衡：逐仓核对干物质平衡，入口 `/m/5`、`GET/POST /api/m5`。
 - M6 结算复核：结算到分并保留尾差依据，入口 `/m/6`、`GET/POST /api/m6`。
 - M7 批次追溯：检查行数平衡与证据摘要，入口 `/m/7`、`GET/POST /api/m7`。
+- M8 仓容分配：按车落仓、本仓优先、余量不足拆一仓、放不下整车暂缓，入口 `/m/8`、`GET/POST /api/m8`、`GET /api/allocation.csv`。
 
 ## 演示与复核
 
@@ -30,6 +31,7 @@ docker compose config --quiet
 2. 修改CSV单元格或参数并重跑，保留行号与输入摘要。
 3. 在最后一步复核，旧版本提交返回409。
 4. 证据CSV包含采信行和隔离行，重跑相同内容复用批次。
+5. 仓容分配页查看本批每车落仓、各仓占用与剩余、以及暂缓车次；暂缓车不占库容，改仓容后重跑同一批按差额替换，不会重复占用。
 
 ## 数据与目录
 

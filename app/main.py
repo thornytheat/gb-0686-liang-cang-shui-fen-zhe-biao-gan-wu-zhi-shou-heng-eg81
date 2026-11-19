@@ -44,16 +44,34 @@ def create_app():
         data=request.get_json(silent=True)
         if not isinstance(data,dict): raise DomainError("BODY","请求必须是对象")
         return jsonify(store.review(run_id,data.get("version"),data.get("decision")))
+    @app.get("/api/allocation.csv")
+    def allocation_csv():
+        result=store.fetch(request.args["run"]) if request.args.get("run") else run(persist=False)
+        plan=result.get("allocation") or {"entries":[],"deferred":[]}
+        stream=io.StringIO(newline="");writer=csv.writer(stream)
+        writer.writerow(["批次","车次","行号","申报仓","拆分段","段数","仓号","净重kg","干物质kg","折标kg","金额CNY","状态"])
+        for row in plan["entries"]:
+            writer.writerow([result["manifest"]["run_id"],row["truck_id"],row.get("line",""),row.get("declared_bin",""),
+                             row["part_no"],row["part_count"],row["bin"],str(row["net_kg"]),str(row["dry_kg"]),
+                             str(row.get("standard_kg","")),str(row.get("amount","")),
+                             "拆仓" if row.get("part_count",1)>1 else ("换仓" if row.get("relocated") else "入仓")])
+        for row in plan["deferred"]:
+            writer.writerow([result["manifest"]["run_id"],row["truck_id"],row.get("line",""),row.get("declared_bin",""),
+                             "","","",str(row["net_kg"]),str(row["dry_kg"]),str(row.get("standard_kg","")),"","暂缓"])
+        return Response("﻿"+stream.getvalue(),content_type="text/csv; charset=utf-8",headers={"Content-Disposition":"attachment; filename=allocation.csv"})
     @app.get("/api/evidence.csv")
     def evidence():
-        result=store.fetch(request.args["run"]) if request.args.get("run") else run()
+        result=store.fetch(request.args["run"]) if request.args.get("run") else run(persist=False)
+        deferred={row["truck_id"] for row in (result.get("allocation") or {}).get("deferred",[])}
         stream=io.StringIO(newline="");writer=csv.writer(stream)
         writer.writerow(["批次","行号","主键","原因码","证据"])
         for row in result.get("records",[]):
-            writer.writerow([result["manifest"]["run_id"],row.get("_line",""),row.get("id",row.get("event_id","")),"PASS",json.dumps(serial(row),ensure_ascii=False)])
+            code="CAPACITY" if str(row.get("id","")) in deferred else "PASS"
+            writer.writerow([result["manifest"]["run_id"],row.get("_line",""),row.get("id",row.get("event_id","")),code,json.dumps(serial(row),ensure_ascii=False)])
         for row in result["quarantine"]:
             writer.writerow([result["manifest"]["run_id"],row["line"],row["key"],row["code"],json.dumps(row,ensure_ascii=False)])
         return Response("\ufeff"+stream.getvalue(),content_type="text/csv; charset=utf-8",headers={"Content-Disposition":"attachment; filename=evidence.csv"})
     for n,name in enumerate(STAGES,1): app.register_blueprint(import_module(f"app.modules.m{n}_{name}.handler").bp)
+    app.register_blueprint(import_module("app.modules.m8_allocation.handler").bp)
     return app
 app=create_app()

@@ -1,0 +1,13 @@
+{% extends "base.html" %}{% block content %}
+<div class="formula"><span>本仓优先</span><b>→</b><span>余量不足时整段落另一个仓</span><b>→</b><span>无单仓可容纳则整车暂缓</span><strong>仓容账</strong></div>
+<div class="grain-columns">
+{% for row in data.bins %}<section class="panel balance"><div class="panel__head"><h2>{{row.bin}}</h2><span class="state">余 {{row.remaining_kg}}</span></div><div class="big">{{row.allocated_kg}}<small>本批占用干物质 kg</small></div><div class="ruler"><i style="width:{{(row.allocated_kg|float / row.capacity|float * 100) if row.capacity|float else 0}}%"></i></div><dl><dt>仓容 kg</dt><dd>{{row.capacity}}</dd><dt>入账前已占 kg</dt><dd>{{row.opening_kg}}</dd><dt>本批占用 kg</dt><dd>{{row.allocated_kg}}</dd><dt>本批结束时余量 kg</dt><dd>{{row.remaining_kg}}</dd>{% if row.current_occupied_kg is defined %}<dt>当前累计占用 kg</dt><dd>{{row.current_occupied_kg}}</dd><dt>当前余量 kg</dt><dd>{{row.current_remaining_kg}}</dd>{% endif %}<dt>车次</dt><dd>{{row.trucks}}</dd><dt>拆入段</dt><dd>{{row.split_in}}</dd></dl></section>{% else %}<section class="panel span-three"><div class="panel__head"><h2>尚无仓容账</h2></div><dl><dt>说明</dt><dd>请先运行本批并配置仓容</dd></dl></section>{% endfor %}
+</div>
+<div class="grain-columns" style="margin-top:var(--gap)">
+<section class="panel span-two"><div class="panel__head"><h2>本批分配明细</h2><span>{{data.entries|length}} 段 / {{data.metrics.get('已分配车次',0)}} 车 · <a class="btn" href="/api/allocation.csv?run={{result.manifest.run_id}}">分配 CSV</a></span></div>{{ledger(data.entries,['truck_id','line','declared_bin','part_no','part_count','bin','net_kg','dry_kg','standard_kg','amount'])}}</section>
+<section class="panel"><div class="panel__head"><h2>暂缓车次</h2><sup>不计仓容</sup></div>{{ledger(data.deferred,['truck_id','line','declared_bin','dry_kg','net_kg','reason'])}}</section>
+</div>
+<div class="grain-columns" style="margin-top:var(--gap)">
+<section class="panel span-three"><div class="panel__head"><h2>本批对账</h2></div><dl class="kpi-grid">{% for key,value in data.metrics.items() %}<dt>{{key}}</dt><dd>{{value}}</dd>{% endfor %}</dl></section>
+</div>
+{% endblock %}
